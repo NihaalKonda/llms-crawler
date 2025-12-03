@@ -4,4 +4,3 @@ markdownify
 tenacity
 fastapi
 uvicorn
-vite
