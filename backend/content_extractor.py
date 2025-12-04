@@ -1,6 +1,32 @@
 from bs4 import BeautifulSoup
 from markdownify import markdownify as html_to_md
 from .url_utils import normalize_url
+import re
+
+def _generate_description_from_content(html):
+    """Generate a description from the first paragraph or text content"""
+    soup = BeautifulSoup(html, "html.parser")
+
+    #try to find paragraph for content description
+    for tag in soup.find_all(['p', 'div'], limit=10):
+        text = tag.get_text(strip=True)
+        if len(text) > 100 and not any(skip in text.lower() for skip in ['cookie', 'javascript', 'browser']):
+            text = re.sub(r'\s+', ' ', text)
+            if len(text) > 300:
+                text = text[:297] + '...'
+            return text
+
+    # fallback: get any text from body
+    body = soup.body
+    if body:
+        text = body.get_text(strip=True, separator=' ')
+        text = re.sub(r'\s+', ' ', text)
+        if len(text) > 300:
+            text = text[:297] + '...'
+        if len(text) > 50:
+            return text
+
+    return None
 
 def extract_title_and_description(html):
     soup = BeautifulSoup(html, "html.parser")
@@ -16,6 +42,10 @@ def extract_title_and_description(html):
         if tag and tag.get("content"):
             description = tag["content"].strip()
             break
+
+    # if no meta description found, generate one from content
+    if not description:
+        description = _generate_description_from_content(html)
 
     return title, description
 

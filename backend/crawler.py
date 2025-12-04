@@ -26,12 +26,12 @@ class PageProcessResult:
 
 def _is_optional_url(url):
     """
-    deeper paths, archive/tags/search pages = optional
+    nested links (depth >= 2), archive/tags/search pages = optional
     """
     depth = compute_depth(url)
     lowered = url.lower()
     optional_keywords = ["archive", "tags", "category", "search", "page="]
-    if depth >= 3:
+    if depth >= 2:
         return True
     if any(k in lowered for k in optional_keywords):
         return True

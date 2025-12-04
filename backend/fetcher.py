@@ -34,15 +34,8 @@ def _fetch_with_playwright(url):
                 viewport={'width': 1920, 'height': 1080}
             )
             page = context.new_page()
-
-            # Navigate with a more lenient wait condition and longer timeout
-            # Use 'domcontentloaded' instead of 'networkidle' for faster results
             page.goto(url, wait_until='domcontentloaded', timeout=30000)
-
-            # Wait a bit for JavaScript to execute
             page.wait_for_timeout(2000)
-
-            # Get the rendered HTML
             html = page.content()
 
             browser.close()
