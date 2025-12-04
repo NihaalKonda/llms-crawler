@@ -5,3 +5,4 @@ tenacity
 fastapi
 uvicorn
 playwright
+schedule
