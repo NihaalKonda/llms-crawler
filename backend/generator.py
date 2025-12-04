@@ -135,10 +135,17 @@ def generate_llms_txt(pages):
         optional_pages_sorted = sorted(
             optional_pages, key=lambda p: (p.depth, p.title or p.url)
         )
-        for p in optional_pages_sorted:
+        max_optional = 10
+        displayed = optional_pages_sorted[:max_optional]
+        remaining = len(optional_pages_sorted) - max_optional
+
+        for p in displayed:
             desc = f": {p.description}" if p.description else ""
             link_title = p.title or p.url
             lines.append(f"- [{link_title}]({p.canonical_url}){desc}")
+
+        if remaining > 0:
+            lines.append(f"\n*... and {remaining} more optional pages*")
         lines.append("")
 
     return "\n".join(lines)
