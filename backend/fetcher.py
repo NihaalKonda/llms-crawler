@@ -2,6 +2,7 @@ import random
 import requests
 from requests.exceptions import TooManyRedirects, Timeout, RequestException
 from tenacity import retry, stop_after_attempt, wait_exponential
+from bs4 import BeautifulSoup
 from .config import USER_AGENTS, ACCEPT_LANGUAGES, REQUEST_TIMEOUT, MAX_CONTENT_LENGTH
 
 try:
@@ -119,7 +120,23 @@ def _needs_js_rendering(html):
         '__NEXT_DATA__',  # Next.js
         'nuxt',  # Nuxt.js
         'v-app',  # Vue.js
+        'id="root"',  # React/SPA common pattern
+        'id="app"',   # Vue/SPA common pattern
+        '<div id="root"></div>',  # Empty React root
+        '<div id="app"></div>',   # Empty Vue root
     ]
 
     html_lower = html.lower()
-    return any(indicator.lower() in html_lower for indicator in js_indicators)
+    if any(indicator.lower() in html_lower for indicator in js_indicators):
+        if 'id="root"' in html_lower or 'id="app"' in html_lower:
+            soup = BeautifulSoup(html, 'html.parser')
+            body = soup.body
+            if body:
+                text_content = body.get_text(strip=True)
+                # likely a js-rendered
+                if len(text_content) < 200:
+                    return True
+        else:
+            return True
+
+    return False

@@ -18,6 +18,7 @@ def _extract_key_content(markdown):
     lines = markdown.split('\n')
     sections = []
     current_section = []
+    skip_subsection = False
 
     for line in lines:
         stripped = line.strip()
@@ -26,19 +27,55 @@ def _extract_key_content(markdown):
         if stripped.startswith('[') and stripped.endswith(')') and len(stripped) < 100:
             continue
 
-        # start new section
+        if stripped.startswith('#'):
+            if stripped.startswith('###'):
+                skip_subsection = True
+                continue
+            skip_subsection = False
+            if current_section:
+                paragraph = ' '.join(current_section)
+                if len(paragraph) > 500:
+                    paragraph = paragraph[:497] + '...'
+                sections.append(paragraph)
+                current_section = []
+            sections.append(stripped)
+        elif not skip_subsection and len(stripped) > 30:
+            current_section.append(stripped)
+
+    if current_section:
+        paragraph = ' '.join(current_section)
+        if len(paragraph) > 500:
+            paragraph = paragraph[:497] + '...'
+        sections.append(paragraph)
+
+    return '\n\n'.join(sections[:12])
+
+def _extract_full_content(markdown):
+    """Extract all content from markdown - comprehensive version without truncation"""
+    lines = markdown.split('\n')
+    sections = []
+    current_section = []
+
+    for line in lines:
+        stripped = line.strip()
+        if not stripped or stripped.startswith('!'):
+            continue
+        if stripped.startswith('[') and stripped.endswith(')') and len(stripped) < 100:
+            continue
+
         if stripped.startswith('#'):
             if current_section:
-                sections.append(' '.join(current_section))
+                paragraph = ' '.join(current_section)
+                sections.append(paragraph)
                 current_section = []
             sections.append(stripped)
         elif len(stripped) > 30:
             current_section.append(stripped)
-
     if current_section:
-        sections.append(' '.join(current_section))
+        paragraph = ' '.join(current_section)
+        sections.append(paragraph)
 
-    return '\n\n'.join(sections[:10])
+    return '\n\n'.join(sections)
 
 def generate_llms_txt(pages):
     home = _choose_home_page(pages)
@@ -109,9 +146,10 @@ def generate_llms_full_txt(pages):
     lines.append(f"> {summary}")
     lines.append("")
 
+    core_pages = [p for p in pages if not p.is_optional]
     #sort pages in order of priority
     sorted_pages = sorted(
-        pages,
+        core_pages,
         key=lambda p: (p.depth, p.title or p.url),
     )
     for p in sorted_pages:
@@ -124,7 +162,7 @@ def generate_llms_full_txt(pages):
             lines.append(f"> {p.description}")
             lines.append("")
 
-        formatted_content = _extract_key_content(p.markdown)
+        formatted_content = _extract_full_content(p.markdown)
         lines.append(formatted_content)
         lines.append("")
 

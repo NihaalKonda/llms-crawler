@@ -74,11 +74,7 @@ def extract_main_content_html(html):
     for selector in [
         "main",
         '[role="main"]',
-        ".content",
         "#content",
-        ".post",
-        ".article",
-        "article",
     ]:
         node = soup.select_one(selector)
         if node:
