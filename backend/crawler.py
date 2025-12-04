@@ -20,13 +20,17 @@ from .models import PageInfo, CrawlResult
 
 
 class PageProcessResult:
+    """Container for a processed page and any newly discovered links."""
     def __init__(self, page, discovered_links):
         self.page = page
         self.discovered_links = discovered_links
 
 def _is_optional_url(url):
     """
-    nested links (depth >= 2), archive/tags/search pages = optional
+    Mark URLs as optional based on depth/keywords.
+
+    Nested pages (depth >= 2) and archive/tag/search-like URLs are treated
+    as lower-priority / optional content.
     """
     depth = compute_depth(url)
     lowered = url.lower()
@@ -38,6 +42,13 @@ def _is_optional_url(url):
     return False
 
 def _process_single_url(url, root_url):
+    """
+    Fetch and parse a single URL into PageInfo plus discovered links.
+
+    Returns a PageProcessResult containing:
+    - page: PageInfo or None if fetch fails
+    - discovered_links: set of same-domain links found on the page
+    """
     html = fetch_html(url)
     if not html:
         return PageProcessResult(page=None, discovered_links=set())
@@ -71,8 +82,10 @@ def _process_single_url(url, root_url):
 
 def crawl_site(start_url):
     """
-    bfs crawl through nested websites
-    multi-threaded fetching
+    Crawl a site with BFS and multi-threaded fetching.
+
+    Normalizes the start URL
+    Returns a CrawlResult containing the collected PageInfo objects.
     """
     start_url = normalize_url(start_url, start_url)
     root_domain_url = start_url

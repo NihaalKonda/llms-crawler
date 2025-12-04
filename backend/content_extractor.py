@@ -4,7 +4,7 @@ from .url_utils import normalize_url
 import re
 
 def _generate_description_from_content(html):
-    """Generate a description from the first paragraph or text content"""
+    """Generate a description from visible page text."""
     soup = BeautifulSoup(html, "html.parser")
 
     #try to find paragraph for content description
@@ -29,6 +29,12 @@ def _generate_description_from_content(html):
     return None
 
 def extract_title_and_description(html):
+    """
+    Extract the page title and description.
+
+    Uses common meta description tags first and falls back to a
+    generated description from content if none are found.
+    """
     soup = BeautifulSoup(html, "html.parser")
     title = soup.title.string.strip() if soup.title and soup.title.string else None
 
@@ -50,15 +56,21 @@ def extract_title_and_description(html):
     return title, description
 
 def extract_canonical_url(html, fallback_url):
-    '''
-    try to only look at canonical url for deduplication
-    '''
+    """
+    Returns the normalized canonical href if present, otherwise the
+    provided fallback_url.
+    """
     soup = BeautifulSoup(html, "html.parser")
     tag = soup.select_one('link[rel="canonical"]')
     href = tag["href"].strip() if tag and tag.get("href") else None
     return normalize_url(fallback_url, href) if href else fallback_url
 
 def extract_links(html, base_url):
+    """
+    Extract and normalize all anchor hrefs from the page.
+
+    Returns a set of absolute URLs, using base_url for resolution.
+    """
     soup = BeautifulSoup(html, "html.parser")
     links = set()
     for a in soup.find_all("a", href=True):
@@ -69,6 +81,12 @@ def extract_links(html, base_url):
     return links
 
 def extract_main_content_html(html):
+    """
+    Extract the main content wrapper from the page.
+
+    Tries common main-content selectors first, then falls back to
+    body, then the raw HTML.
+    """
     soup = BeautifulSoup(html, "html.parser")
 
     for selector in [
@@ -86,7 +104,9 @@ def extract_main_content_html(html):
     return html
 
 def html_to_markdown_content(html):
-    # clean the HTML before converting to markdown
+    """
+    Clean HTML and convert it to markdown.
+    """
     soup = BeautifulSoup(html, "html.parser")
     for tag in soup.find_all(['script', 'style', 'noscript', 'iframe', 'svg', 'object', 'embed', 'canvas', 'video', 'audio']):
         tag.decompose()

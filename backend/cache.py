@@ -7,7 +7,7 @@ import threading
 
 class CrawlCache:
     """
-    Thread-safe cache for crawled site data with automatic refresh
+    Thread-safe filesystem cache for crawled site data.
     """
 
     def __init__(self, cache_dir="./cache"):
@@ -17,18 +17,16 @@ class CrawlCache:
         self.lock = threading.Lock()
 
     def _get_url_lock(self, url):
-        """Get or create a lock for a specific URL"""
         with self.lock:
             if url not in self.locks:
                 self.locks[url] = threading.Lock()
             return self.locks[url]
 
     def _get_cache_key(self, url):
-        """Generate cache key from URL"""
         return hashlib.sha256(url.encode()).hexdigest()
 
     def _get_cache_paths(self, url):
-        """Get cache file paths for a URL"""
+        """Return paths for metadata and text files for a URL."""
         key = self._get_cache_key(url)
         return {
             "metadata": self.cache_dir / f"{key}_metadata.json",
@@ -37,7 +35,6 @@ class CrawlCache:
         }
 
     def _compute_structure_hash(self, pages):
-        """Hash based on URLs and their relationships"""
         structure = sorted([
             (p.canonical_url, p.section, p.depth, p.is_optional)
             for p in pages
@@ -45,16 +42,12 @@ class CrawlCache:
         return hashlib.sha256(str(structure).encode()).hexdigest()
 
     def _compute_content_hash(self, pages):
-        """Hash based on all content hashes"""
         content_hashes = sorted([p.content_hash for p in pages])
         return hashlib.sha256("".join(content_hashes).encode()).hexdigest()
 
     def get(self, url):
         """
-        Get cached data for URL if available
-
-        Returns:
-            dict with llms_txt, llms_full_txt, and metadata, or None if cache miss
+        Return cached llms data and metadata for URL, or None on miss/error.
         """
         url_lock = self._get_url_lock(url)
         with url_lock:
@@ -79,13 +72,9 @@ class CrawlCache:
 
     def set(self, url, llms_txt, llms_full_txt, pages):
         """
-        Store crawled data in cache
+        Persist llms artifacts and metadata for a URL.
 
-        Args:
-            url: The crawled URL
-            llms_txt: Generated llms.txt content
-            llms_full_txt: Generated llms-full.txt content
-            pages: List of PageInfo objects
+        Computes structure/content hashes from pages for change detection.
         """
         url_lock = self._get_url_lock(url)
         with url_lock:
@@ -110,7 +99,7 @@ class CrawlCache:
                 print(f"Error writing cache for {url}: {e}")
 
     def invalidate(self, url):
-        """Remove cached data for a URL"""
+        """Delete all cached files for a URL."""
         url_lock = self._get_url_lock(url)
         with url_lock:
             paths = self._get_cache_paths(url)
@@ -121,9 +110,6 @@ class CrawlCache:
     def get_status(self, url):
         """
         Get cache status for a URL
-
-        Returns:
-            dict with status info or None if not cached
         """
         paths = self._get_cache_paths(url)
 

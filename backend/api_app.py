@@ -23,7 +23,7 @@ class CrawlRequest(BaseModel):
     url: str
 
 @app.post("/api/crawl")
-def crawl(req):
+def crawl(req: CrawlRequest):
     """
     Crawl a site and return llms.txt and llms-full.txt.
 
@@ -102,7 +102,7 @@ def crawl(req):
 
 
 @app.get("/api/cache/status")
-def get_cache_status(url):
+def get_cache_status(url: str):
     """
     Return cache status and metadata for a URL.
 
@@ -119,7 +119,7 @@ def get_cache_status(url):
 
 
 @app.post("/api/cache/invalidate")
-def invalidate_cache(req):
+def invalidate_cache(req: CrawlRequest):
     """
     Invalidate any cached crawl result for the given URL.
 
