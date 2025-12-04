@@ -4,3 +4,4 @@ markdownify
 tenacity
 fastapi
 uvicorn
+playwright

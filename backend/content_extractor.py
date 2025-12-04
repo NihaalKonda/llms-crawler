@@ -60,9 +60,17 @@ def extract_main_content_html(html):
     return html
 
 def html_to_markdown_content(html):
-    return html_to_md(
-        html,
+    # clean the HTML before converting to markdown
+    soup = BeautifulSoup(html, "html.parser")
+    for tag in soup.find_all(['script', 'style', 'noscript', 'iframe', 'svg', 'object', 'embed', 'canvas', 'video', 'audio']):
+        tag.decompose()
+    cleaned_html = str(soup)
+
+    md = html_to_md(
+        cleaned_html,
         heading_style="ATX",
         bullets="-",
         code_language="",
     )
+
+    return md

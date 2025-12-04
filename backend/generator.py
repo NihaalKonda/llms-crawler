@@ -19,7 +19,6 @@ def generate_llms_txt(pages):
     title = home.title if home and home.title else "Website"
     lines = []
 
-    # H1
     lines.append(f"# {title}")
     lines.append("")
     # blockquote summary
