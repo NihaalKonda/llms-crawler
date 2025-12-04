@@ -12,6 +12,7 @@ except ImportError:
     PLAYWRIGHT_AVAILABLE = False
 
 def _build_headers():
+    """Build randomized HTTP headers for crawling."""
     return {
         "User-Agent": random.choice(USER_AGENTS),
         "Accept-Language": random.choice(ACCEPT_LANGUAGES),
@@ -51,12 +52,10 @@ def _fetch_with_playwright(url):
 )
 def fetch_html(url, use_js=False):
     """
-    fetch html content for url with retries on retriable errors
-    returns none if content is not html or too large
+    Fetch HTML for a URL with retries.
 
-    Args:
-        url: URL to fetch
-        use_js: If True, use Playwright to render JavaScript (slower but works with dynamic sites)
+    Uses requests by default, optionally falling back to Playwright for
+    JS-rendered sites. Returns None on non-HTML, oversized, or failed responses.
     """
     # if js rendering is requested and available, use Playwright
     if use_js and PLAYWRIGHT_AVAILABLE:

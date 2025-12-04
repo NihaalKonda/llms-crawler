@@ -1,12 +1,14 @@
 from collections import defaultdict
 
 def _choose_home_page(pages):
+    """Choose a home page candidate (lowest depth) from pages."""
     if not pages:
         return None
     candidates = sorted(pages, key=lambda p: p.depth)
     return candidates[0]
 
 def _build_summary(home):
+    """Build a short site summary from the home page."""
     if home and home.description:
         return home.description
     if home and home.title:
@@ -78,6 +80,12 @@ def _extract_full_content(markdown):
     return '\n\n'.join(sections)
 
 def generate_llms_txt(pages):
+    """
+    Generate a compact llms.txt-style overview of the site.
+
+    Includes a summary, key content from the home page, and a
+    sectioned list of core and optional pages for LLM navigation.
+    """
     home = _choose_home_page(pages)
     summary = _build_summary(home)
     title = home.title if home and home.title else "Website"
@@ -136,6 +144,12 @@ def generate_llms_txt(pages):
     return "\n".join(lines)
 
 def generate_llms_full_txt(pages):
+    """
+    Generate a full llms-full.txt-style dump of site content.
+
+    Renders all non-optional pages in priority order with headings,
+    links, descriptions, and full markdown content.
+    """
     home = _choose_home_page(pages)
     summary = _build_summary(home)
     title = home.title if home and home.title else "Website"
