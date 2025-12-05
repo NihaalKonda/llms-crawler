@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { crawlSite } from "./api";
+import { useState, useEffect, useRef } from "react";
+import { crawlSite, checkForUpdates } from "./api";
 import UrlForm from "./components/UrlForm";
 import ResultsTabs from "./components/ResultsTabs";
 import Loader from "./components/Loader";
@@ -9,6 +9,52 @@ export default function App() {
   const [llmsFullTxt, setLlmsFullTxt] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [version, setVersion] = useState(0);
+  const [autoUpdateEnabled, setAutoUpdateEnabled] = useState(false);
+  const [updateNotification, setUpdateNotification] = useState("");
+  const pollIntervalRef = useRef(null);
+  const notificationTimeoutRef = useRef(null);
+
+  useEffect(() => {
+    if (!currentUrl || !autoUpdateEnabled) {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+      return;
+    }
+
+    const pollForUpdates = async () => {
+      try {
+        const data = await checkForUpdates(currentUrl);
+        if (data.has_update && data.version > version) {
+          console.log(`[Auto-Update] New version ${data.version} available for ${currentUrl}`);
+          setLlmsTxt(data.llms_txt || "");
+          setLlmsFullTxt(data.llms_full_txt || "");
+          setVersion(data.version);
+          setUpdateNotification("Content has been updated automatically!");
+
+          if (notificationTimeoutRef.current) {
+            clearTimeout(notificationTimeoutRef.current);
+          }
+          notificationTimeoutRef.current = setTimeout(() => {
+            setUpdateNotification("");
+          }, 5000);
+        }
+      } catch (err) {
+        console.error("[Auto-Update] Poll error:", err);
+      }
+    };
+
+    pollIntervalRef.current = setInterval(pollForUpdates, 30000);
+
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, [currentUrl, version, autoUpdateEnabled]);
 
   async function handleSubmit(url) {
     setError("");
@@ -17,9 +63,12 @@ export default function App() {
     setLlmsFullTxt("");
 
     try {
-      const { llms_txt, llms_full_txt } = await crawlSite(url);
-      setLlmsTxt(llms_txt || "");
-      setLlmsFullTxt(llms_full_txt || "");
+      const data = await crawlSite(url);
+      setLlmsTxt(data.llms_txt || "");
+      setLlmsFullTxt(data.llms_full_txt || "");
+      setCurrentUrl(url);
+      setVersion(data.version || 1);
+      setAutoUpdateEnabled(true);
     } catch (err) {
       console.error(err);
       setError(err.message || "Something went wrong");
@@ -61,6 +110,22 @@ export default function App() {
           }}
         >
           {error}
+        </div>
+      )}
+
+      {updateNotification && (
+        <div
+          style={{
+            marginTop: "1rem",
+            padding: "0.75rem 1rem",
+            borderRadius: "6px",
+            backgroundColor: "#e6f7ff",
+            color: "#0066cc",
+            fontSize: "0.9rem",
+            border: "1px solid #91d5ff",
+          }}
+        >
+          {updateNotification}
         </div>
       )}
 

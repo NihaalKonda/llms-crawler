@@ -93,7 +93,6 @@ def generate_llms_txt(pages):
 
     lines.append(f"# {title}")
     lines.append("")
-    # blockquote summary
     lines.append(f"> {summary}")
     lines.append("")
 

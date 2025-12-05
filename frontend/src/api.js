@@ -22,3 +22,14 @@ export async function crawlSite(url) {
   const data = await res.json();
   return data;
 }
+
+export async function checkForUpdates(url) {
+  const res = await fetch(`${API_BASE}/api/monitor/check?url=${encodeURIComponent(url)}`);
+
+  if (!res.ok) {
+    throw new Error(`Failed to check for updates: ${res.status}`);
+  }
+
+  const data = await res.json();
+  return data;
+}

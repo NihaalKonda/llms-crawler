@@ -6,6 +6,7 @@ import hashlib
 from .crawler import crawl_site
 from .generator import generate_llms_txt, generate_llms_full_txt
 from .cache import CrawlCache
+from .monitor import SiteMonitor
 
 app = FastAPI()
 app.add_middleware(
@@ -17,6 +18,17 @@ app.add_middleware(
 )
 
 cache = CrawlCache(cache_dir="./cache")
+monitor = SiteMonitor(cache, check_interval=1800)
+
+@app.on_event("startup")
+async def startup_event():
+    """Start background monitoring on server startup"""
+    monitor.start()
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Stop background monitoring on server shutdown"""
+    monitor.stop()
 
 class CrawlRequest(BaseModel):
     """Request body for crawl-related endpoints."""
@@ -43,11 +55,13 @@ def crawl(req: CrawlRequest):
             cached_time = datetime.fromisoformat(cached_data["metadata"]["cached_at"])
             age = datetime.now() - cached_time
             if age.total_seconds() < 1800:
+                monitor.set_active_site(url)
                 return {
                     "llms_txt": cached_data["llms_txt"],
                     "llms_full_txt": cached_data["llms_full_txt"],
                     "from_cache": True,
-                    "cached_at": cached_data["metadata"]["cached_at"]
+                    "cached_at": cached_data["metadata"]["cached_at"],
+                    "version": monitor.get_version(url)
                 }
 
             result = crawl_site(url)
@@ -65,24 +79,28 @@ def crawl(req: CrawlRequest):
 
             if new_structure_hash == old_structure_hash and new_content_hash == old_content_hash:
                 cache.set(url, cached_data["llms_txt"], cached_data["llms_full_txt"], pages)
+                monitor.set_active_site(url)
                 return {
                     "llms_txt": cached_data["llms_txt"],
                     "llms_full_txt": cached_data["llms_full_txt"],
                     "from_cache": True,
                     "cached_at": cached_data["metadata"]["cached_at"],
-                    "checked_at": datetime.now().isoformat()
+                    "checked_at": datetime.now().isoformat(),
+                    "version": monitor.get_version(url)
                 }
 
             llms_txt = generate_llms_txt(pages)
             llms_full_txt = generate_llms_full_txt(pages)
             cache.set(url, llms_txt, llms_full_txt, pages)
+            monitor.set_active_site(url)
 
             return {
                 "llms_txt": llms_txt,
                 "llms_full_txt": llms_full_txt,
                 "from_cache": False,
                 "cached_at": datetime.now().isoformat(),
-                "change_detected": True
+                "change_detected": True,
+                "version": monitor.get_version(url)
             }
 
         result = crawl_site(url)
@@ -90,12 +108,14 @@ def crawl(req: CrawlRequest):
         llms_txt = generate_llms_txt(pages)
         llms_full_txt = generate_llms_full_txt(pages)
         cache.set(url, llms_txt, llms_full_txt, pages)
+        monitor.set_active_site(url)
 
         return {
             "llms_txt": llms_txt,
             "llms_full_txt": llms_full_txt,
             "from_cache": False,
-            "cached_at": datetime.now().isoformat()
+            "cached_at": datetime.now().isoformat(),
+            "version": monitor.get_version(url)
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -131,3 +151,29 @@ def invalidate_cache(req: CrawlRequest):
 
     cache.invalidate(url)
     return {"message": f"Cache invalidated for {url}"}
+
+
+@app.get("/api/monitor/check")
+def check_for_updates(url: str):
+    """
+    Check if there are updates available for a URL.
+
+    Frontend polls this endpoint to detect when content has changed.
+    Returns the current version number and updated content if version changed.
+    """
+    if not url:
+        raise HTTPException(status_code=400, detail="URL is required")
+
+    current_version = monitor.get_version(url)
+    cached_data = cache.get(url)
+
+    if not cached_data:
+        return {"has_update": False, "version": 0}
+
+    return {
+        "has_update": True,
+        "version": current_version,
+        "llms_txt": cached_data["llms_txt"],
+        "llms_full_txt": cached_data["llms_full_txt"],
+        "cached_at": cached_data["metadata"]["cached_at"]
+    }
