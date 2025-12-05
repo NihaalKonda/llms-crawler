@@ -42,10 +42,11 @@ class SiteMonitor:
     def set_active_site(self, url):
         """
         Set the currently monitored site.
-        Replaces any previously monitored site.
+        Replaces any previously monitored site and clears old cached content.
         """
         with self.lock:
             if url != self.current_url:
+                self.cache.clear_all_except(url)
                 self.current_url = url
                 self.last_checked = datetime.now()
                 self.version = 1

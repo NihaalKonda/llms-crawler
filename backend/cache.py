@@ -128,3 +128,21 @@ class CrawlCache:
             }
         except Exception:
             return None
+
+    def clear_all_except(self, url):
+        """
+        Clear all cached files EXCEPT for the specified URL.
+        Used to maintain only the most recently visited site.
+        """
+        keep_key = self._get_cache_key(url)
+
+        for file_path in self.cache_dir.glob("*"):
+            file_hash = file_path.stem.split("_")[0]
+
+            # delete cache if it's not for the current URL
+            if file_hash != keep_key:
+                try:
+                    file_path.unlink()
+                    print(f"[Cache] Deleted old cache file: {file_path.name}")
+                except Exception as e:
+                    print(f"[Cache] Error deleting {file_path.name}: {e}")
