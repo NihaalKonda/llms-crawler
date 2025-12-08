@@ -3,6 +3,7 @@ from datetime import datetime
 from pathlib import Path
 import json
 import threading
+import os
 
 
 class CrawlCache:
@@ -12,7 +13,11 @@ class CrawlCache:
 
     def __init__(self, cache_dir="./cache"):
         self.cache_dir = Path(cache_dir)
-        self.cache_dir.mkdir(parents=True, exist_ok=True)
+        try:
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
+        except OSError:
+            self.cache_dir = Path("/tmp/cache")
+            self.cache_dir.mkdir(parents=True, exist_ok=True)
         self.locks = {}
         self.lock = threading.Lock()
 
